@@ -22,3 +22,10 @@
 - 业务接口：设备台账、借用流程、耗材库存与预警、维修、统计报表
 - 事务一致性：出库 `select_for_update + 状态校验`；耗材扣库存 `事务 + F 表达式/行锁` 防负库存
 - 前端：路由/页面骨架、Axios 封装、Pinia 状态与权限路由守卫
+
+## Phase 2.1：设备台账 API（已完成）
+- 设备分类 CRUD：`/api/v1/equipment-categories/`
+- 设备台账 CRUD：`/api/v1/equipment/`（支持 status/category/keyword 过滤 + 分页）
+- 设备状态变更：POST `/api/v1/equipment/{id}/status/`（写状态日志）
+- 设备状态日志：GET `/api/v1/equipment/{id}/logs/`
+- 权限：管理员可写；老师/学生只读（`IsAdminOrReadOnly`）

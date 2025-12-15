@@ -52,16 +52,16 @@
 
 ## 5. REST 接口清单（示例路径，均返回 {code, message, data}，日期用 ISO8601）
 - **认证**  
-  - POST `/api/auth/login` body{username,password} → tokens{access,refresh}  
-  - POST `/api/auth/refresh` body{refresh} → access
+  - POST `/api/v1/auth/token/` body{username,password} → tokens{access,refresh}  
+  - POST `/api/v1/auth/token/refresh/` body{refresh} → access
 - **用户 & 角色（管理员）**  
   - GET `/api/users`，POST `/api/users`，PUT `/api/users/{id}`，PATCH `/api/users/{id}/activate`  
   - GET `/api/roles`，POST `/api/roles`，POST `/api/user-roles`  
 - **设备台账**  
-  - GET `/api/equipment` 查询（支持 status/category/keyword）  
-  - POST `/api/equipment` 新增，PUT `/api/equipment/{id}` 更新  
-  - GET `/api/equipment/{id}/logs` 状态日志  
-  - POST `/api/equipment/{id}/maintenance` 创建维修单  
+  - 设备分类：`/api/v1/equipment-categories/`（CRUD；非管理员只读）  
+  - 设备台账：`/api/v1/equipment/`（CRUD；支持 status/category/keyword 过滤 + 分页；非管理员只读）  
+  - 状态变更：POST `/api/v1/equipment/{id}/status/`（管理员）  
+  - 状态日志：GET `/api/v1/equipment/{id}/logs/`  
 - **借用流程（设备/耗材共用 borrow_request）**  
   - POST `/api/borrow-requests` body{type,purpose,expected_return_date,items:[{item_type,equipment_id|consumable_id,qty,due_at}]}` → draft  
   - POST `/api/borrow-requests/{id}/submit` → PENDING_APPROVAL  

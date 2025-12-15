@@ -22,6 +22,13 @@
 ## 健康检查
 - `GET /api/v1/health/` → `{"status": "ok"}`
 
+## 设备台账 API（v1）
+- JWT 获取 token：`POST /api/v1/auth/token/`
+- 分类：`/api/v1/equipment-categories/`（管理员可写，其余只读）
+- 设备：`/api/v1/equipment/`（管理员可写，其余只读；支持 `status/category/keyword` + 分页）
+- 状态变更：`POST /api/v1/equipment/{id}/status/`（写 `equipment_status_log`）
+- 状态日志：`GET /api/v1/equipment/{id}/logs/`
+
 ## 验收检查
 - 确保已运行 `python manage.py migrate`（MySQL 连接正常）  
 - 运行开发服务器：`python manage.py runserver`  
