@@ -80,9 +80,9 @@
 - **维修**  
   - GET `/api/maintenance`，POST `/api/maintenance`，PATCH `/api/maintenance/{id}` 更新状态  
 - **报表**  
-  - GET `/api/reports/borrow-top` params{range}  
-  - GET `/api/reports/equipment-utilization` params{range}  
-  - GET `/api/reports/consumable-monthly` params{year}
+  - GET `/api/v1/reports/borrow-top/` params{limit,start?,end?}  
+  - GET `/api/v1/reports/equipment-utilization/` params{start,end,limit?,include_zero?}  
+  - GET `/api/v1/reports/consumable-monthly/` params{year?,consumable_id?}
 
 ### 请求/响应示例
 ```json
@@ -103,6 +103,28 @@ POST /api/v1/borrow/requests/9001/approve/
 POST /api/v1/stock/in/
 { "consumable_id": 11, "qty": 50, "remark": "本月采购" }
 → 201 { "id": 1, "consumable_id": 11, "type": "IN", "status": "APPROVED", "qty": 50 }
+```
+```json
+GET /api/v1/reports/borrow-top/?limit=10
+→ 200 {
+  "limit": 10,
+  "range": {"start": null, "end": null},
+  "items": [{"equipment_id": 1, "equipment_code": "E-001", "equipment_name": "示波器", "borrow_count": 3}]
+}
+```
+```json
+GET /api/v1/reports/equipment-utilization/?start=2025-12-01&end=2025-12-31
+→ 200 {
+  "range": {"start":"2025-12-01","end":"2025-12-31","range_days":31},
+  "items": [{"equipment_id": 1, "equipment_code": "E-001", "borrowed_days": 5, "range_days": 31, "utilization_rate": 0.16129}]
+}
+```
+```json
+GET /api/v1/reports/consumable-monthly/?year=2025
+→ 200 {
+  "year": 2025,
+  "items": [{"month":"2025-01","qty":0},{"month":"2025-02","qty":12}]
+}
 ```
 
 ## 6. 前端页面清单与路由（Vue3 + Vite + ElementPlus + Pinia）

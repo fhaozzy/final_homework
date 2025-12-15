@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "inventory.apps.InventoryConfig",
     "borrowing.apps.BorrowingConfig",
     "maintenance.apps.MaintenanceConfig",
+    "reports.apps.ReportsConfig",
 ]
 
 MIDDLEWARE = [

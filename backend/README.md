@@ -53,6 +53,11 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/stock/1/approve/ -H "Authorization
 curl.exe -X GET http://127.0.0.1:8000/api/v1/consumables/warnings/ -H "Authorization: Bearer <ACCESS>"
 ```
 
+## 报表 API（v1，仅管理员）
+- 借用排行：`GET /api/v1/reports/borrow-top/?limit=10&start=YYYY-MM-DD&end=YYYY-MM-DD`
+- 设备利用率：`GET /api/v1/reports/equipment-utilization/?start=YYYY-MM-DD&end=YYYY-MM-DD&include_zero=1`
+- 耗材月消耗：`GET /api/v1/reports/consumable-monthly/?year=2025`
+
 ## 验收检查
 - 确保已运行 `python manage.py migrate`（MySQL 连接正常）  
 - 运行开发服务器：`python manage.py runserver`  
