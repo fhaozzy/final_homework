@@ -1,18 +1,33 @@
 from django.db import transaction
-from django.db.models import Q
-from rest_framework import status
+from django.db.models import F, Q
+from django.utils import timezone
+from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from accounts.permissions import IsAdminOrReadOnly
-from inventory.models import Equipment, EquipmentCategory, EquipmentStatus, EquipmentStatusLog
+from accounts.permissions import IsAdminOrReadOnly, IsAdminUser, is_admin_user
+from inventory.models import (
+    Consumable,
+    Equipment,
+    EquipmentCategory,
+    EquipmentStatus,
+    EquipmentStatusLog,
+    StockTxn,
+    StockTxnStatus,
+    StockTxnType,
+)
 from inventory.serializers import (
+    ConsumableSerializer,
     EquipmentCategorySerializer,
     EquipmentSerializer,
     EquipmentStatusChangeSerializer,
     EquipmentStatusLogSerializer,
+    StockInSerializer,
+    StockOutSerializer,
+    StockTxnSerializer,
 )
 
 
@@ -112,3 +127,117 @@ class EquipmentViewSet(ModelViewSet):
         equipment = self.get_object()
         logs_qs = equipment.status_logs.select_related("changed_by").order_by("-created_at", "-id")
         return Response(EquipmentStatusLogSerializer(logs_qs, many=True).data, status=status.HTTP_200_OK)
+
+
+class ConsumableViewSet(ModelViewSet):
+    queryset = Consumable.objects.all().order_by("-id")
+    serializer_class = ConsumableSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+    @action(detail=False, methods=["get"], url_path="warnings")
+    def warnings(self, request):
+        qs = self.get_queryset().filter(current_stock__lt=F("safety_stock")).order_by("current_stock", "id")
+        return Response(ConsumableSerializer(qs, many=True).data, status=status.HTTP_200_OK)
+
+
+class StockTxnViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
+    queryset = StockTxn.objects.select_related("consumable", "performed_by", "reviewed_by").order_by("-id")
+    serializer_class = StockTxnSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in {"stock_in", "approve", "reject"}:
+            return [IsAdminUser()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if is_admin_user(self.request.user):
+            return qs
+        return qs.filter(performed_by=self.request.user)
+
+    @action(detail=False, methods=["post"], url_path="in")
+    @transaction.atomic
+    def stock_in(self, request):
+        serializer = StockInSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        consumable = serializer.validated_data["consumable"]
+        qty = serializer.validated_data["qty"]
+        remark = serializer.validated_data.get("remark", "")
+        now = timezone.now()
+
+        consumable = Consumable.objects.select_for_update().get(pk=consumable.pk)
+        Consumable.objects.filter(pk=consumable.pk).update(current_stock=F("current_stock") + qty, updated_at=now)
+
+        txn = StockTxn.objects.create(
+            consumable=consumable,
+            type=StockTxnType.IN,
+            status=StockTxnStatus.APPROVED,
+            qty=qty,
+            performed_by=request.user,
+            reviewed_by=request.user,
+            decided_at=now,
+            remark=remark,
+        )
+
+        return Response(StockTxnSerializer(txn).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["post"], url_path="out")
+    def stock_out(self, request):
+        serializer = StockOutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        consumable = serializer.validated_data["consumable"]
+        qty = serializer.validated_data["qty"]
+        remark = serializer.validated_data.get("remark", "")
+
+        txn = StockTxn.objects.create(
+            consumable=consumable,
+            type=StockTxnType.OUT,
+            status=StockTxnStatus.PENDING,
+            qty=qty,
+            performed_by=request.user,
+            remark=remark,
+        )
+        return Response(StockTxnSerializer(txn).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    @transaction.atomic
+    def approve(self, request, pk=None):
+        txn = StockTxn.objects.select_for_update().select_related("consumable").get(pk=pk)
+        if txn.type != StockTxnType.OUT:
+            raise ValidationError({"type": f"Only OUT txn can be approved, got {txn.type}."})
+        if txn.status != StockTxnStatus.PENDING:
+            raise ValidationError({"status": f"Txn must be PENDING, got {txn.status}."})
+
+        now = timezone.now()
+        consumable = Consumable.objects.select_for_update().get(pk=txn.consumable_id)
+        updated = Consumable.objects.filter(pk=consumable.pk, current_stock__gte=txn.qty).update(
+            current_stock=F("current_stock") - txn.qty, updated_at=now
+        )
+        if updated != 1:
+            raise ValidationError({"stock": "Insufficient stock."})
+
+        txn.status = StockTxnStatus.APPROVED
+        txn.reviewed_by = request.user
+        txn.decided_at = now
+        txn.save(update_fields=["status", "reviewed_by", "decided_at", "updated_at"])
+
+        return Response(StockTxnSerializer(txn).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    @transaction.atomic
+    def reject(self, request, pk=None):
+        txn = StockTxn.objects.select_for_update().get(pk=pk)
+        if txn.type != StockTxnType.OUT:
+            raise ValidationError({"type": f"Only OUT txn can be rejected, got {txn.type}."})
+        if txn.status != StockTxnStatus.PENDING:
+            raise ValidationError({"status": f"Txn must be PENDING, got {txn.status}."})
+
+        now = timezone.now()
+        txn.status = StockTxnStatus.REJECTED
+        txn.reviewed_by = request.user
+        txn.decided_at = now
+        txn.save(update_fields=["status", "reviewed_by", "decided_at", "updated_at"])
+        return Response(StockTxnSerializer(txn).data, status=status.HTTP_200_OK)

@@ -36,6 +36,23 @@
 - 归还验收：`POST /api/v1/borrow/requests/{id}/return/`（管理员）
 - 列表/详情：`GET /api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ `GET /api/v1/borrow/requests/{id}/`
 
+## 耗材与库存 API（v1）
+- 耗材：`/api/v1/consumables/`（管理员可写，其余只读；字段含 `safety_stock/current_qty`）
+- 预警：`GET /api/v1/consumables/warnings/`（`current_qty < safety_stock`）
+- 入库：`POST /api/v1/stock/in/`（管理员；直接 APPROVED；增加库存）
+- 领用申请：`POST /api/v1/stock/out/`（学生/老师；生成 OUT + PENDING；不扣库存）
+- 审核：`POST /api/v1/stock/{id}/approve/` / `POST /api/v1/stock/{id}/reject/`（管理员；approve 使用事务 + 行锁/F 表达式防负库存）
+
+### curl 示例（Windows PowerShell）
+```bash
+curl.exe -X POST http://127.0.0.1:8000/api/v1/auth/token/ -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"Admin123!\"}"
+curl.exe -X POST http://127.0.0.1:8000/api/v1/consumables/ -H "Authorization: Bearer <ACCESS>" -H "Content-Type: application/json" -d "{\"code\":\"C-001\",\"name\":\"一次性手套\",\"unit\":\"盒\",\"category\":\"耗材\",\"safety_stock\":10,\"location\":\"A1\"}"
+curl.exe -X POST http://127.0.0.1:8000/api/v1/stock/in/ -H "Authorization: Bearer <ACCESS>" -H "Content-Type: application/json" -d "{\"consumable_id\":1,\"qty\":50,\"remark\":\"采购\"}"
+curl.exe -X POST http://127.0.0.1:8000/api/v1/stock/out/ -H "Authorization: Bearer <ACCESS>" -H "Content-Type: application/json" -d "{\"consumable_id\":1,\"qty\":8,\"remark\":\"实验\"}"
+curl.exe -X POST http://127.0.0.1:8000/api/v1/stock/1/approve/ -H "Authorization: Bearer <ACCESS>"
+curl.exe -X GET http://127.0.0.1:8000/api/v1/consumables/warnings/ -H "Authorization: Bearer <ACCESS>"
+```
+
 ## 验收检查
 - 确保已运行 `python manage.py migrate`（MySQL 连接正常）  
 - 运行开发服务器：`python manage.py runserver`  

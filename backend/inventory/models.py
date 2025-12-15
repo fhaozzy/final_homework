@@ -94,17 +94,28 @@ class Consumable(models.Model):
 
 class StockTxnType(models.TextChoices):
     IN = "IN", "In"
-    CONSUME = "CONSUME", "Consume"
+    OUT = "OUT", "Out"
+
+
+class StockTxnStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
 
 
 class StockTxn(models.Model):
     consumable = models.ForeignKey(Consumable, on_delete=models.CASCADE, related_name="txns")
     type = models.CharField(max_length=16, choices=StockTxnType.choices)
+    status = models.CharField(max_length=16, choices=StockTxnStatus.choices, default=StockTxnStatus.PENDING)
     qty = models.PositiveIntegerField()
     related_request = models.ForeignKey(
         "borrowing.BorrowRequest", on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_txns"
     )
     performed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="stock_txns")
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name="reviewed_stock_txns"
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
     remark = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -113,4 +124,5 @@ class StockTxn(models.Model):
         db_table = "stock_txn"
         indexes = [
             models.Index(fields=["consumable", "type", "created_at"]),
+            models.Index(fields=["status"]),
         ]
