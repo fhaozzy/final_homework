@@ -8,6 +8,7 @@
   - **管理员** `ADMIN`（或 `is_staff/is_superuser`）：唯一审批人；负责出库/归还验收/库存审核；可管理用户与角色；可查看所有数据。
 - **接口策略（以 `/api/v1/` 为准）**
   - **无需登录**：`/health/`、`/auth/token/`、`/auth/token/refresh/`
+  - **当前用户信息（用于前端路由/菜单 RBAC）**：`GET /me/`（返回用户资料 + role.code 列表）
   - **用户与角色（仅管理员）**：`/users/`、`/roles/`、`/user-roles/`
   - **设备台账**
     - 读：所有登录用户（学生/老师/维修员/管理员）
@@ -73,6 +74,8 @@
 - **认证**  
   - POST `/api/v1/auth/token/` body{username,password} → tokens{access,refresh}  
   - POST `/api/v1/auth/token/refresh/` body{refresh} → access
+- **当前用户（用于前端角色判定）**
+  - GET `/api/v1/me/`（登录用户）→ `{id, username, real_name, email, phone, roles, is_admin}`
 - **用户 & 角色（管理员）**  
   - 用户：`/api/v1/users/`（CRUD）  
   - 启用/停用：PATCH `/api/v1/users/{id}/activate/` / PATCH `/api/v1/users/{id}/deactivate/`  
@@ -143,6 +146,18 @@ GET /api/v1/reports/consumable-monthly/?year=2025
 → 200 {
   "year": 2025,
   "items": [{"month":"2025-01","qty":0},{"month":"2025-02","qty":12}]
+}
+```
+```json
+GET /api/v1/me/
+→ 200 {
+  "id": 1,
+  "username": "teacher1",
+  "real_name": "张三",
+  "email": "",
+  "phone": "",
+  "roles": ["TEACHER"],
+  "is_admin": false
 }
 ```
 
