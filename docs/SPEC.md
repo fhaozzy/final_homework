@@ -33,7 +33,7 @@
 - **return_record（borrowing.ReturnRecord）**：id, borrow_item_id OneToOne borrow_item, checked_by FK user, condition(enum GOOD/DAMAGED/LOST), fee, remark, checked_at, created_at, updated_at  
 - **maintenance（maintenance.Maintenance）**：id, equipment_id FK equipment, title, description, status(enum OPEN/IN_PROGRESS/DONE), assigned_to FK user(nullable), cost, started_at, finished_at, created_at, updated_at；idx(equipment_id), idx(status)  
 - **consumable（inventory.Consumable）**：id, code(uniq), name, unit, category, safety_stock, current_stock, location, created_at, updated_at；idx(code), idx(current_stock)  
-- **stock_txn（inventory.StockTxn）**：id, consumable_id FK consumable, type(enum IN/OUT), status(enum PENDING/APPROVED/REJECTED), qty(>0), performed_by FK user, reviewed_by FK user(nullable), decided_at(nullable), remark, created_at, updated_at；idx(consumable_id,type,created_at), idx(status)  
+- **stock_txn（inventory.StockTxn）**：id, consumable_id FK consumable, type(enum IN/OUT), status(enum PENDING/APPROVED/REJECTED), qty(>0), related_request_id FK borrow_request(nullable), performed_by FK user, reviewed_by FK user(nullable), decided_at(nullable), remark, created_at, updated_at；idx(consumable_id,type,created_at), idx(status)  
 
 > 说明：Django 自带的 `auth_*`、`django_*` 等为框架系统表，不计入上述 13 张业务表。
 
