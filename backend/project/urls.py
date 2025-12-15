@@ -13,7 +13,9 @@ urlpatterns = [
     path("api/v1/health/", health_view, name="health"),
     path("api/v1/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/v1/", include("accounts.urls")),
     path("api/v1/", include("inventory.urls")),
     path("api/v1/", include("borrowing.urls")),
+    path("api/v1/", include("maintenance.urls")),
     path("api/v1/reports/", include("reports.urls")),
 ]

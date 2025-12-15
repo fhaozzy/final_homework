@@ -13,6 +13,12 @@
 ## 数据表
 - 13 张业务表使用 `db_table` 对齐命名要求：`user/role/user_role/equipment/.../stock_txn`（详见 `docs/SPEC.md`）
 
+## 用户与角色 API（v1，仅管理员）
+- 用户：`/api/v1/users/`（CRUD）
+- 启用/停用：`PATCH /api/v1/users/{id}/activate/` / `PATCH /api/v1/users/{id}/deactivate/`
+- 角色：`/api/v1/roles/`（CRUD）
+- 用户角色：`/api/v1/user-roles/`（创建/删除）
+
 ## 常用命令
 - 生成迁移：`python manage.py makemigrations`
 - 执行迁移：`python manage.py migrate`
@@ -35,6 +41,9 @@
 - 出库：`POST /api/v1/borrow/requests/{id}/checkout/`（管理员；事务 + 行锁；仅 AVAILABLE）
 - 归还验收：`POST /api/v1/borrow/requests/{id}/return/`（管理员）
 - 列表/详情：`GET /api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ `GET /api/v1/borrow/requests/{id}/`
+
+## 维修 API（v1）
+- 维修单：`/api/v1/maintenance/`（列表/创建/更新；写入需要管理员或 MAINTAINER 角色）
 
 ## 耗材与库存 API（v1）
 - 耗材：`/api/v1/consumables/`（管理员可写，其余只读；字段含 `safety_stock/current_qty`）

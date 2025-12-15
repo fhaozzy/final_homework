@@ -57,8 +57,10 @@
   - POST `/api/v1/auth/token/` body{username,password} → tokens{access,refresh}  
   - POST `/api/v1/auth/token/refresh/` body{refresh} → access
 - **用户 & 角色（管理员）**  
-  - GET `/api/users`，POST `/api/users`，PUT `/api/users/{id}`，PATCH `/api/users/{id}/activate`  
-  - GET `/api/roles`，POST `/api/roles`，POST `/api/user-roles`  
+  - 用户：`/api/v1/users/`（CRUD）  
+  - 启用/停用：PATCH `/api/v1/users/{id}/activate/` / PATCH `/api/v1/users/{id}/deactivate/`  
+  - 角色：`/api/v1/roles/`（CRUD）  
+  - 用户角色：`/api/v1/user-roles/`（创建/删除）  
 - **设备台账**  
   - 设备分类：`/api/v1/equipment-categories/`（CRUD；非管理员只读）  
   - 设备台账：`/api/v1/equipment/`（CRUD；支持 status/category/keyword 过滤 + 分页；非管理员只读）  
@@ -78,7 +80,7 @@
   - 领用申请：POST `/api/v1/stock/out/`（学生/老师；OUT + PENDING；不扣库存）  
   - 审核：POST `/api/v1/stock/{id}/approve/` / POST `/api/v1/stock/{id}/reject/`（管理员；approve 防负库存）  
 - **维修**  
-  - GET `/api/maintenance`，POST `/api/maintenance`，PATCH `/api/maintenance/{id}` 更新状态  
+  - 维修单：`/api/v1/maintenance/`（列表/创建/更新；写入需要管理员或 MAINTAINER 角色）  
 - **报表**  
   - GET `/api/v1/reports/borrow-top/` params{limit,start?,end?}  
   - GET `/api/v1/reports/equipment-utilization/` params{start,end,limit?,include_zero?}  
