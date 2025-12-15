@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
 
@@ -47,7 +49,7 @@ class BorrowRequest(models.Model):
         ]
 
     def __str__(self):
-        return f"BR-{self.id}"
+        return f"BR-{self.pk}"
 
 
 class BorrowItem(models.Model):
@@ -106,7 +108,7 @@ class ReturnRecord(models.Model):
     borrow_item = models.OneToOneField(BorrowItem, on_delete=models.CASCADE, related_name="return_record")
     checked_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="return_records")
     condition = models.CharField(max_length=16, choices=ReturnCondition.choices)
-    fee = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    fee = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
     remark = models.TextField(blank=True)
     checked_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(default=timezone.now)
