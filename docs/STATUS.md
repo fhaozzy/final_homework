@@ -29,3 +29,10 @@
 - 设备状态变更：POST `/api/v1/equipment/{id}/status/`（写状态日志）
 - 设备状态日志：GET `/api/v1/equipment/{id}/logs/`
 - 权限：管理员可写；老师/学生只读（`IsAdminOrReadOnly`）
+
+## Phase 2.2：借用流程 API（已完成）
+- 申请：POST `/api/v1/borrow/requests/`（学生/老师）→ `REQUESTED`
+- 审批：POST `/api/v1/borrow/requests/{id}/approve/` / `/reject/`（管理员）→ 写 `borrow_approval`
+- 出库：POST `/api/v1/borrow/requests/{id}/checkout/`（管理员）→ 事务 + 行锁；设备 `AVAILABLE`→`BORROWED`；写 `equipment_status_log`；request→`OUT`
+- 归还验收：POST `/api/v1/borrow/requests/{id}/return/`（管理员）→ 写 `return_record`；设备→`AVAILABLE`；写 `equipment_status_log`；request→`CLOSED`
+- 列表/详情：GET `/api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ GET `/api/v1/borrow/requests/{id}/`

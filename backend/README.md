@@ -29,6 +29,13 @@
 - 状态变更：`POST /api/v1/equipment/{id}/status/`（写 `equipment_status_log`）
 - 状态日志：`GET /api/v1/equipment/{id}/logs/`
 
+## 借用流程 API（v1）
+- 申请：`POST /api/v1/borrow/requests/`（学生/老师）
+- 审批：`POST /api/v1/borrow/requests/{id}/approve/` / `POST /api/v1/borrow/requests/{id}/reject/`（管理员）
+- 出库：`POST /api/v1/borrow/requests/{id}/checkout/`（管理员；事务 + 行锁；仅 AVAILABLE）
+- 归还验收：`POST /api/v1/borrow/requests/{id}/return/`（管理员）
+- 列表/详情：`GET /api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ `GET /api/v1/borrow/requests/{id}/`
+
 ## 验收检查
 - 确保已运行 `python manage.py migrate`（MySQL 连接正常）  
 - 运行开发服务器：`python manage.py runserver`  

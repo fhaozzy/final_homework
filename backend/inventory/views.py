@@ -30,13 +30,16 @@ def _is_transition_allowed(from_status: str, to_status: str) -> bool:
         return to_status == EquipmentStatus.AVAILABLE
 
     if from_status == EquipmentStatus.AVAILABLE:
-        return to_status == EquipmentStatus.RESERVED
+        return to_status in {EquipmentStatus.RESERVED, EquipmentStatus.BORROWED}
 
     if from_status == EquipmentStatus.RESERVED:
-        return to_status in {EquipmentStatus.OUT, EquipmentStatus.AVAILABLE}
+        return to_status in {EquipmentStatus.BORROWED, EquipmentStatus.OUT, EquipmentStatus.AVAILABLE}
+
+    if from_status == EquipmentStatus.BORROWED:
+        return to_status in {EquipmentStatus.RETURN_PENDING, EquipmentStatus.AVAILABLE}
 
     if from_status == EquipmentStatus.OUT:
-        return to_status == EquipmentStatus.RETURN_PENDING
+        return to_status in {EquipmentStatus.RETURN_PENDING, EquipmentStatus.AVAILABLE}
 
     if from_status == EquipmentStatus.RETURN_PENDING:
         return to_status == EquipmentStatus.AVAILABLE

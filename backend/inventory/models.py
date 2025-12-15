@@ -7,7 +7,8 @@ from accounts.models import User
 class EquipmentStatus(models.TextChoices):
     AVAILABLE = "AVAILABLE", "Available"
     RESERVED = "RESERVED", "Reserved"
-    OUT = "OUT", "Out"
+    BORROWED = "BORROWED", "Borrowed"
+    OUT = "OUT", "Out (Legacy)"
     RETURN_PENDING = "RETURN_PENDING", "Return Pending"
     MAINTENANCE = "MAINTENANCE", "Maintenance"
     DISCARDED = "DISCARDED", "Discarded"

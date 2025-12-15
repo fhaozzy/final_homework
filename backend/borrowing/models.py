@@ -11,11 +11,11 @@ class RequestType(models.TextChoices):
 
 
 class RequestStatus(models.TextChoices):
-    DRAFT = "DRAFT", "Draft"
-    PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
+    REQUESTED = "REQUESTED", "Requested"
     APPROVED = "APPROVED", "Approved"
     REJECTED = "REJECTED", "Rejected"
-    CANCELLED = "CANCELLED", "Cancelled"
+    OUT = "OUT", "Out"
+    CLOSED = "CLOSED", "Closed"
 
 
 class BorrowItemStatus(models.TextChoices):
@@ -29,7 +29,7 @@ class BorrowItemStatus(models.TextChoices):
 class BorrowRequest(models.Model):
     applicant = models.ForeignKey(User, on_delete=models.PROTECT, related_name="borrow_requests")
     type = models.CharField(max_length=16, choices=RequestType.choices)
-    status = models.CharField(max_length=20, choices=RequestStatus.choices, default=RequestStatus.DRAFT)
+    status = models.CharField(max_length=20, choices=RequestStatus.choices, default=RequestStatus.REQUESTED)
     purpose = models.CharField(max_length=255, blank=True)
     expected_return_date = models.DateField(null=True, blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)

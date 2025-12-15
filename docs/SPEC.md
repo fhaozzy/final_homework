@@ -13,9 +13,9 @@
   - 报表：管理员
 
 ## 2. 状态机
-- **设备状态**：AVAILABLE → RESERVED(申请通过待出库) → OUT(已借出) → RETURN_PENDING(已归还待验收) → AVAILABLE；任意时刻可进入 MAINTENANCE；报废 DISCARDED（终态，不可再借）。  
-- **借用单 borrow_request.status**：DRAFT → PENDING_APPROVAL → APPROVED → REJECTED | CANCELLED；APPROVED 后待出库，出库完成由物品行转 OUT。  
-- **借用行 borrow_item.status**：PENDING → OUT → RETURN_PENDING → RETURN_ACCEPTED | RETURN_REJECTED。  
+- **设备状态（借用主流程）**：AVAILABLE → BORROWED → AVAILABLE；任意时刻可进入 MAINTENANCE；报废 DISCARDED（终态，不可再借）。  
+- **借用单 borrow_request.status**：REQUESTED → APPROVED → OUT → CLOSED；REQUESTED → REJECTED。  
+- **借用行 borrow_item.status**：PENDING → OUT → RETURN_ACCEPTED（本阶段由管理员验收直接闭环）。  
 - **耗材库存事务 stock_txn.type**：IN、CONSUME；CONSUME 必须在审核通过时扣减。  
 - **耗材领用申请（可用 borrow_request + item.type=CONSUMABLE）**：同借用审批，但扣减库存在管理员审核通过时原子执行。  
 - **维修 maintenance.status**：OPEN → IN_PROGRESS → DONE；DONE 时设备可回 AVAILABLE。
@@ -25,9 +25,9 @@
 - **role（accounts.Role）**：id, code(uniq), name, created_at, updated_at  
 - **user_role（accounts.UserRole）**：id, user_id FK user, role_id FK role, created_at, updated_at；uniq(user_id,role_id)；idx(user_id), idx(role_id)  
 - **equipment_category（inventory.EquipmentCategory）**：id, name(uniq), code(uniq), description, created_at, updated_at  
-- **equipment（inventory.Equipment）**：id, code(uniq), name, category_id FK equipment_category, status(enum AVAILABLE/RESERVED/OUT/RETURN_PENDING/MAINTENANCE/DISCARDED), location, purchase_date, price, vendor, spec, usable, created_at, updated_at；idx(category_id), idx(status)  
+- **equipment（inventory.Equipment）**：id, code(uniq), name, category_id FK equipment_category, status(enum AVAILABLE/RESERVED/BORROWED/OUT(legacy)/RETURN_PENDING/MAINTENANCE/DISCARDED), location, purchase_date, price, vendor, spec, usable, created_at, updated_at；idx(category_id), idx(status)  
 - **equipment_status_log（inventory.EquipmentStatusLog）**：id, equipment_id FK equipment, from_status, to_status, changed_by FK user, reason, remark, created_at, updated_at；idx(equipment_id)  
-- **borrow_request（borrowing.BorrowRequest）**：id, applicant_id FK user, type(enum EQUIPMENT/CONSUMABLE), status(enum DRAFT/PENDING_APPROVAL/APPROVED/REJECTED/CANCELLED), purpose, expected_return_date, submitted_at, approved_at, rejected_at, approver_id FK user(nullable, 固定管理员), remark, created_at, updated_at；idx(applicant_id,status,type)  
+- **borrow_request（borrowing.BorrowRequest）**：id, applicant_id FK user, type(enum EQUIPMENT/CONSUMABLE), status(enum REQUESTED/APPROVED/REJECTED/OUT/CLOSED), purpose, expected_return_date, submitted_at, approved_at, rejected_at, approver_id FK user(nullable, 固定管理员), remark, created_at, updated_at；idx(applicant_id,status,type)  
 - **borrow_item（borrowing.BorrowItem）**：id, request_id FK borrow_request, item_type(enum EQUIPMENT/CONSUMABLE), equipment_id FK equipment(nullable), consumable_id FK consumable(nullable), qty(>0), status(enum PENDING/OUT/RETURN_PENDING/RETURN_ACCEPTED/RETURN_REJECTED), out_at, due_at, return_submitted_at, return_checked_at, created_at, updated_at；uniq(request_id,equipment_id)；idx(request_id,status)  
 - **borrow_approval（borrowing.BorrowApproval）**：id, request_id OneToOne borrow_request, approver_id FK user, decision(enum APPROVED/REJECTED), comment, decided_at, created_at, updated_at  
 - **return_record（borrowing.ReturnRecord）**：id, borrow_item_id OneToOne borrow_item, checked_by FK user, condition(enum GOOD/DAMAGED/LOST), fee, remark, checked_at, created_at, updated_at  
@@ -62,14 +62,13 @@
   - 设备台账：`/api/v1/equipment/`（CRUD；支持 status/category/keyword 过滤 + 分页；非管理员只读）  
   - 状态变更：POST `/api/v1/equipment/{id}/status/`（管理员）  
   - 状态日志：GET `/api/v1/equipment/{id}/logs/`  
-- **借用流程（设备/耗材共用 borrow_request）**  
-  - POST `/api/borrow-requests` body{type,purpose,expected_return_date,items:[{item_type,equipment_id|consumable_id,qty,due_at}]}` → draft  
-  - POST `/api/borrow-requests/{id}/submit` → PENDING_APPROVAL  
-  - POST `/api/borrow-requests/{id}/approve`（管理员）body{decision,comment} → APPROVED/REJECTED；设备 APPROVED 时设备置 RESERVED  
-  - POST `/api/borrow-items/{id}/out`（管理员） → status OUT，设备置 OUT  
-  - POST `/api/borrow-items/{id}/return`（申请归还） → RETURN_PENDING  
-  - POST `/api/borrow-items/{id}/check-return`（管理员）body{condition,fee,remark,maintenance_needed?} → RETURN_ACCEPTED/REJECTED，设备回 AVAILABLE 或 MAINTENANCE  
-  - GET `/api/borrow-requests`、`/api/borrow-items` 查询
+- **借用流程（设备借用 v1，严格按状态机）**  
+  - POST `/api/v1/borrow/requests/`（学生/老师）→ 创建 borrow_request + borrow_item，状态 `REQUESTED`  
+  - POST `/api/v1/borrow/requests/{id}/approve/`（管理员）→ `APPROVED`，写 `borrow_approval`  
+  - POST `/api/v1/borrow/requests/{id}/reject/`（管理员）→ `REJECTED`，写 `borrow_approval`  
+  - POST `/api/v1/borrow/requests/{id}/checkout/`（管理员）→ 事务 + 行锁；仅 `AVAILABLE` 可出库；设备→`BORROWED`；写 `equipment_status_log`；request→`OUT`  
+  - POST `/api/v1/borrow/requests/{id}/return/`（管理员）→ 写 `return_record`；设备→`AVAILABLE`；写 `equipment_status_log`；request→`CLOSED`  
+  - GET `/api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ GET `/api/v1/borrow/requests/{id}/`
 - **耗材库存**  
   - POST `/api/consumables` 新增，GET `/api/consumables` 查询  
   - POST `/api/consumables/{id}/stock-in` body{qty,remark} → stock_txn IN  
@@ -84,19 +83,18 @@
 
 ### 请求/响应示例
 ```json
-POST /api/borrow-requests
+POST /api/v1/borrow/requests/
 {
-  "type": "EQUIPMENT",
   "purpose": "毕业课题实验",
   "expected_return_date": "2025-01-20",
-  "items": [{"item_type":"EQUIPMENT","equipment_id":101,"qty":1,"due_at":"2025-01-20"}]
+  "items": [{"equipment_id":101},{"equipment_id":102}]
 }
-→ 200 { "code":0, "data":{"id":9001,"status":"DRAFT"} }
+→ 201 { "id":9001, "status":"REQUESTED", "items":[...] }
 ```
 ```json
-POST /api/borrow-requests/9001/approve
-{ "decision":"APPROVED", "comment":"准予借用" }
-→ 200 { "code":0, "data":{"status":"APPROVED"} }
+POST /api/v1/borrow/requests/9001/approve/
+{ "comment":"准予借用" }
+→ 200 { "status":"APPROVED" }
 ```
 ```json
 POST /api/consumables/11/stock-in
