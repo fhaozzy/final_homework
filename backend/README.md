@@ -40,7 +40,7 @@
 - 审批：`POST /api/v1/borrow/requests/{id}/approve/` / `POST /api/v1/borrow/requests/{id}/reject/`（管理员）
 - 出库：`POST /api/v1/borrow/requests/{id}/checkout/`（管理员；事务 + 行锁；仅 AVAILABLE）
 - 归还验收：`POST /api/v1/borrow/requests/{id}/return/`（管理员）
-- 列表/详情：`GET /api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ `GET /api/v1/borrow/requests/{id}/`
+- 列表/详情：`GET /api/v1/borrow/requests/`（管理员全量；老师全量只读；学生仅自己）/ `GET /api/v1/borrow/requests/{id}/`
 
 ## 维修 API（v1）
 - 维修单：`/api/v1/maintenance/`（列表/创建/更新；写入需要管理员或 MAINTAINER 角色）
@@ -62,7 +62,7 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/stock/1/approve/ -H "Authorization
 curl.exe -X GET http://127.0.0.1:8000/api/v1/consumables/warnings/ -H "Authorization: Bearer <ACCESS>"
 ```
 
-## 报表 API（v1，仅管理员）
+## 报表 API（v1，管理员/老师可读）
 - 借用排行：`GET /api/v1/reports/borrow-top/?limit=10&start=YYYY-MM-DD&end=YYYY-MM-DD`
 - 设备利用率：`GET /api/v1/reports/equipment-utilization/?start=YYYY-MM-DD&end=YYYY-MM-DD&include_zero=1`
 - 耗材月消耗：`GET /api/v1/reports/consumable-monthly/?year=2025`

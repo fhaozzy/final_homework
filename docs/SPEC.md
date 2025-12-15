@@ -1,16 +1,33 @@
 # 实验室设备与耗材借用管理系统规范
 
 ## 1. 角色与权限矩阵
-- **角色**：普通用户、管理员（审批/出入库/验收）、维修员（可选，若无则管理员兼任）
-- **矩阵（关键能力）**  
-  - 登录、刷新 token：所有角色  
-  - 查看设备/耗材台账与库存：所有角色  
-- 申请设备借用、申请耗材领用：普通用户、管理员  
-  - 审批设备借用、出库、归还验收：管理员  
-  - 耗材入库、耗材领用审核扣减库存、库存预警配置：管理员  
-  - 维修单登记、更新：管理员、维修员  
-  - 用户/角色管理：管理员  
-  - 报表：管理员
+- **角色（建议 role.code）**
+  - **学生** `STUDENT`：可发起设备借用/耗材领用；仅可查看本人单据；不可审批/出入库/验收。
+  - **老师** `TEACHER`：可发起设备借用/耗材领用；可查看全量借用单（只读）与统计报表（只读）；不可审批/出入库/验收。
+  - **维修员** `MAINTAINER`：可创建/更新维修单（写入）；其余只读；若无则管理员兼任。
+  - **管理员** `ADMIN`（或 `is_staff/is_superuser`）：唯一审批人；负责出库/归还验收/库存审核；可管理用户与角色；可查看所有数据。
+- **接口策略（以 `/api/v1/` 为准）**
+  - **无需登录**：`/health/`、`/auth/token/`、`/auth/token/refresh/`
+  - **用户与角色（仅管理员）**：`/users/`、`/roles/`、`/user-roles/`
+  - **设备台账**
+    - 读：所有登录用户（学生/老师/维修员/管理员）
+    - 写：仅管理员（分类/设备 CRUD、`POST /equipment/{id}/status/`）
+  - **借用流程（设备借用）**
+    - 创建：学生/老师/管理员（`POST /borrow/requests/`）
+    - 列表/详情：管理员全量；老师全量（只读）；学生仅本人（只读）
+    - 审批/出库/归还验收：仅管理员（`approve/reject/checkout/return`）
+  - **耗材与库存**
+    - 耗材台账读/预警：所有登录用户（`GET /consumables/`、`GET /consumables/warnings/`）
+    - 耗材台账写：仅管理员（`/consumables/` CRUD）
+    - 领用申请：学生/老师/管理员（`POST /stock/out/`，仅生成 OUT+PENDING 不扣库存）
+    - 入库/审核：仅管理员（`POST /stock/in/`、`POST /stock/{id}/approve/`、`POST /stock/{id}/reject/`）
+    - 流水查询：管理员全量；其余仅本人（`GET /stock/`、`GET /stock/{id}/`）
+  - **维修**
+    - 读：所有登录用户（`GET /maintenance/`、`GET /maintenance/{id}/`）
+    - 写：管理员/维修员（`POST/PATCH /maintenance/`；DONE 后设备回 AVAILABLE 并写状态日志）
+  - **报表**
+    - 管理员/老师可读：`/reports/borrow-top/`、`/reports/equipment-utilization/`、`/reports/consumable-monthly/`
+    - 学生无权限
 
 ## 2. 状态机
 - **设备状态（借用主流程）**：AVAILABLE → BORROWED → AVAILABLE；任意时刻可进入 MAINTENANCE；报废 DISCARDED（终态，不可再借）。  

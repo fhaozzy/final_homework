@@ -19,6 +19,16 @@ def is_admin_user(user) -> bool:
     return has_role(user, "ADMIN")
 
 
+def is_teacher_user(user) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+
+    if is_admin_user(user):
+        return True
+
+    return has_role(user, "TEACHER")
+
+
 def is_maintainer_user(user) -> bool:
     if is_admin_user(user):
         return True
@@ -41,6 +51,13 @@ class IsAdminOrReadOnly(BasePermission):
             return bool(user and user.is_authenticated)
 
         return is_admin_user(user)
+
+
+class IsTeacherOrAdmin(BasePermission):
+    message = "Teacher or admin permission required."
+
+    def has_permission(self, request, view):
+        return is_teacher_user(getattr(request, "user", None))
 
 
 class IsMaintainerOrAdmin(BasePermission):

@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.permissions import IsAdminUser
+from accounts.permissions import IsTeacherOrAdmin
 from borrowing.models import BorrowItem
 from inventory.models import Equipment, StockTxn, StockTxnStatus, StockTxnType
 
@@ -43,7 +43,7 @@ def _date_range_to_utc_datetimes(start_date: datetime.date, end_date: datetime.d
 
 
 class BorrowTopReportView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsTeacherOrAdmin]
 
     def get(self, request):
         limit = _parse_positive_int(request.query_params.get("limit"), "limit", default=10, max_value=200)
@@ -94,7 +94,7 @@ class BorrowTopReportView(APIView):
 
 
 class EquipmentUtilizationReportView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsTeacherOrAdmin]
 
     def get(self, request):
         start_param = request.query_params.get("start")
@@ -190,7 +190,7 @@ class EquipmentUtilizationReportView(APIView):
 
 
 class ConsumableMonthlyReportView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsTeacherOrAdmin]
 
     def get(self, request):
         year_param = request.query_params.get("year")

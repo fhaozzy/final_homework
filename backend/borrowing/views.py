@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from accounts.permissions import IsAdminUser, is_admin_user
+from accounts.permissions import IsAdminUser, is_admin_user, is_teacher_user
 from borrowing.models import (
     BorrowApproval,
     BorrowApprovalDecision,
@@ -58,7 +58,7 @@ class BorrowRequestViewSet(
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if is_admin_user(self.request.user):
+        if is_admin_user(self.request.user) or is_teacher_user(self.request.user):
             return queryset
         return queryset.filter(applicant=self.request.user)
 
