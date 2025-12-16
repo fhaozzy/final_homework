@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 
+import { tokenObtainPair, tokenRefresh } from '../api/auth'
+
 export interface AuthUser {
   id: number
   username: string
@@ -21,11 +23,30 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => Boolean(state.accessToken),
   },
   actions: {
+    async login(payload: { username: string; password: string }) {
+      const tokens = await tokenObtainPair(payload)
+      this.setTokens(tokens)
+    },
+    async refresh() {
+      if (!this.refreshToken) {
+        throw new Error('Missing refresh token')
+      }
+      const { access } = await tokenRefresh({ refresh: this.refreshToken })
+      this.setAccessToken(access)
+    },
+    logout() {
+      this.clearTokens()
+      this.setUser(null)
+    },
     setTokens(tokens: { access: string; refresh: string }) {
       this.accessToken = tokens.access
       this.refreshToken = tokens.refresh
       localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access)
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh)
+    },
+    setAccessToken(access: string) {
+      this.accessToken = access
+      localStorage.setItem(ACCESS_TOKEN_KEY, access)
     },
     clearTokens() {
       this.accessToken = ''
