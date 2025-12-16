@@ -14,6 +14,7 @@ const collapsed = ref(false)
 
 const activeMenuPath = computed(() => {
   if (route.path.startsWith('/equipment')) return '/equipment'
+  if (route.path.startsWith('/borrow')) return '/borrow/requests'
   return route.path
 })
 

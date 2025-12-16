@@ -54,10 +54,29 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '耗材库存' },
       },
       {
-        path: '/borrow/requests',
-        name: 'borrow-requests',
-        component: () => import('../views/BorrowRequestsView.vue'),
+        path: '/borrow',
+        component: RouterView,
         meta: { title: '借用流程' },
+        children: [
+          {
+            path: 'requests',
+            name: 'borrow-requests',
+            component: () => import('../views/BorrowRequestsView.vue'),
+            meta: { title: '借用单列表' },
+          },
+          {
+            path: 'new',
+            name: 'borrow-new',
+            component: () => import('../views/BorrowRequestCreateView.vue'),
+            meta: { title: '新建借用单' },
+          },
+          {
+            path: ':id',
+            name: 'borrow-detail',
+            component: () => import('../views/BorrowRequestDetailView.vue'),
+            meta: { title: '借用单详情' },
+          },
+        ],
       },
       {
         path: '/maintenance',
