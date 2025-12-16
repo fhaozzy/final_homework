@@ -13,6 +13,7 @@ const router = useRouter()
 const collapsed = ref(false)
 
 const activeMenuPath = computed(() => {
+  if (route.path.startsWith('/equipment')) return '/equipment'
   return route.path
 })
 
@@ -188,4 +189,3 @@ onMounted(() => {
   padding: 16px;
 }
 </style>
-

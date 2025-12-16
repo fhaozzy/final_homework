@@ -25,9 +25,27 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/equipment',
-        name: 'equipment',
-        component: () => import('../views/EquipmentListView.vue'),
+        component: RouterView,
         meta: { title: '设备台账' },
+        children: [
+          {
+            path: '',
+            name: 'equipment',
+            component: () => import('../views/EquipmentListView.vue'),
+          },
+          {
+            path: 'categories',
+            name: 'equipment-categories',
+            component: () => import('../views/EquipmentCategoriesView.vue'),
+            meta: { title: '设备分类', roles: ['ADMIN'] as RoleCode[] },
+          },
+          {
+            path: ':id',
+            name: 'equipment-detail',
+            component: () => import('../views/EquipmentDetailView.vue'),
+            meta: { title: '设备详情' },
+          },
+        ],
       },
       {
         path: '/consumables',
