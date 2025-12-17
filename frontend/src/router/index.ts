@@ -1,4 +1,5 @@
 import type { Pinia } from 'pinia'
+import { ElMessage } from 'element-plus'
 import { RouterView, createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { useAuthStore } from '../stores/auth'
@@ -160,6 +161,7 @@ export function createAppRouter(pinia: Pinia) {
 
     const requiredRoles = to.meta.roles as RoleCode[] | undefined
     if (requiredRoles?.length && !auth.hasAnyRole(requiredRoles)) {
+      ElMessage.warning('无权限访问该页面')
       return { name: 'dashboard' }
     }
   })
