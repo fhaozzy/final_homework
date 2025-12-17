@@ -1,13 +1,13 @@
 # 环境与运行说明
 
 ## 操作系统
-- Microsoft Windows 10.0.26100.7171
+- Windows（PowerShell）
 
 ## 运行时与工具版本
-- Python 3.12.7
-- Node.js v20.18.0
-- npm 10.8.2
-- MySQL 8.0.42 (MySQL Community Server)
+- Python 3.12+
+- Node.js 20+
+- npm 10+
+- MySQL 8.0+
 
 ## 虚拟环境建议（Windows PowerShell）
 1. 创建：`python -m venv .venv`
@@ -17,7 +17,7 @@
 5. 退出虚拟环境：`deactivate`
 
 ## 当前虚拟环境 (.venv) 状态
-- 路径：`.venv`（Python 3.12.7，home=D:\anconda，include-system-site-packages=false）
+- 路径：`.venv`（建议使用 Python 3.12+；不依赖系统 Python 路径）
 - 已安装包（.venv 内 pip freeze）：
   ```
   asgiref==3.11.0
@@ -39,7 +39,7 @@
 ## 后端启动与验收（backend/）
 1. 迁移：`python manage.py migrate`
 2. 创建管理员：`python manage.py createsuperuser`
-3. 启动：`python manage.py runserver 0.0.0.0:8000`（注意格式必须为 `地址:端口`，不要把“行号标注”写进命令）
+3. 启动：`python manage.py runserver 0.0.0.0:8000`
 4. 健康检查：`GET http://127.0.0.1:8000/api/v1/health/` → `{"status":"ok"}`
 
 ## 前后端联调验收（按演示脚本走）
@@ -51,7 +51,7 @@
 3. 配置前端环境变量：复制 `frontend/.env.example` 为 `frontend/.env`（一般保持 `VITE_API_BASE_URL=/api/v1`）。
 
 ### 2) 启动后端（PowerShell 窗口 1）
-1. `cd d:\dasanshang\database\final_homework`
+1. `cd <project_root>`（项目根目录，包含 `backend/`、`frontend/`、`.venv/`）
 2. `.\.venv\Scripts\Activate.ps1`
 3. `cd backend`
 4. `pip install -r requirements.txt`
@@ -61,7 +61,7 @@
 8. 验证：访问 `http://127.0.0.1:8000/api/v1/health/` 返回 `{"status":"ok"}`
 
 ### 3) 启动前端（PowerShell 窗口 2）
-1. `cd d:\dasanshang\database\final_homework\frontend`
+1. `cd <project_root>\frontend`（或先 `cd <project_root>` 再 `cd frontend`）
 2. `npm i`
 3. `npm run dev`
 4. 打开 `http://127.0.0.1:5173/`
