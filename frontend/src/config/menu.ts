@@ -13,7 +13,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { key: 'equipment', title: '设备台账', path: '/equipment' },
   { key: 'consumables', title: '耗材库存', path: '/consumables' },
   { key: 'borrowing', title: '借用流程', path: '/borrow/requests' },
-  { key: 'maintenance', title: '维修管理', path: '/maintenance', rolesAny: ['MAINTAINER', 'ADMIN'] },
+  { key: 'maintenance', title: '维修管理', path: '/maintenance' },
   {
     key: 'reports',
     title: '统计报表',

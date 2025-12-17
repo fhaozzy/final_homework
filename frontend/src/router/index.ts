@@ -82,7 +82,7 @@ const routes: RouteRecordRaw[] = [
         path: '/maintenance',
         name: 'maintenance',
         component: () => import('../views/MaintenanceView.vue'),
-        meta: { title: '维修管理', roles: ['MAINTAINER', 'ADMIN'] as RoleCode[] },
+        meta: { title: '维修管理' },
       },
       {
         path: 'reports',
