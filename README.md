@@ -20,6 +20,7 @@
 2. 启动后端：`cd backend` → `python manage.py migrate` → `python manage.py runserver 0.0.0.0:8000`
 3. 启动前端：`cd frontend` → `npm i` → `npm run dev`
 4. 健康检查：`GET http://127.0.0.1:8000/api/v1/health/` → `{"status":"ok"}`
+5. 角色判定：前端登录后会调用 `GET /api/v1/me/` 获取 `roles/is_admin` 来驱动菜单与路由守卫
 
 联调演示脚本：
 - 前端角度完整演示：`frontend/README.md`

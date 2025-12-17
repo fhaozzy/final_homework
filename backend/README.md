@@ -28,6 +28,9 @@
 ## 健康检查
 - `GET /api/v1/health/` → `{"status": "ok"}`
 
+## 当前用户（用于前端角色判定）
+- `GET /api/v1/me/` → `{id, username, real_name, email, phone, roles, is_admin}`
+
 ## 设备台账 API（v1）
 - JWT 获取 token：`POST /api/v1/auth/token/`
 - 分类：`/api/v1/equipment-categories/`（管理员可写，其余只读）

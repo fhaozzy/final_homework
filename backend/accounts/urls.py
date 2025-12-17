@@ -1,11 +1,11 @@
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from accounts.views import RoleViewSet, UserRoleViewSet, UserViewSet
+from accounts.views import MeView, RoleViewSet, UserRoleViewSet, UserViewSet
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"user-roles", UserRoleViewSet, basename="user-role")
 
-urlpatterns = router.urls
-
+urlpatterns = [path("me/", MeView.as_view(), name="me")] + router.urls

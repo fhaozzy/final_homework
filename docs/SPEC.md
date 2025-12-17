@@ -8,7 +8,7 @@
   - **管理员** `ADMIN`（或 `is_staff/is_superuser`）：唯一审批人；负责出库/归还验收/库存审核；可管理用户与角色；可查看所有数据。
 - **接口策略（以 `/api/v1/` 为准）**
   - **无需登录**：`/health/`、`/auth/token/`、`/auth/token/refresh/`
-  - **当前用户信息（用于前端路由/菜单 RBAC）**：`GET /me/`（返回用户资料 + role.code 列表）
+  - **当前用户信息（用于前端路由/菜单 RBAC）**：`GET /api/v1/me/`（返回用户资料 + `role.code` 列表 + `is_admin`）
   - **用户与角色（仅管理员）**：`/users/`、`/roles/`、`/user-roles/`
   - **设备台账**
     - 读：所有登录用户（学生/老师/维修员/管理员）
@@ -31,9 +31,11 @@
     - 学生无权限
 
 ## 2. 状态机
-- **设备状态（借用主流程）**：AVAILABLE → BORROWED → AVAILABLE；任意时刻可进入 MAINTENANCE；报废 DISCARDED（终态，不可再借）。  
-- **借用单 borrow_request.status**：REQUESTED → APPROVED → OUT → CLOSED；REQUESTED → REJECTED。  
-- **借用行 borrow_item.status**：PENDING → OUT → RETURN_ACCEPTED（本阶段由管理员验收直接闭环）。  
+- **设备状态（实现已支持的枚举）**：AVAILABLE / RESERVED / BORROWED / OUT(legacy) / RETURN_PENDING / MAINTENANCE / DISCARDED。  
+  - **当前借用主流程（已实现）**：AVAILABLE → BORROWED → AVAILABLE。  
+  - **状态变更接口（管理员）**：支持按 `inventory.views._is_transition_allowed` 做校验流转（例如：MAINTENANCE → AVAILABLE；DISCARDED 为终态等）。  
+- **借用单 borrow_request.status（已实现）**：REQUESTED → APPROVED → OUT → CLOSED；REQUESTED → REJECTED。  
+- **借用行 borrow_item.status（已实现）**：PENDING → OUT → RETURN_ACCEPTED（当前由管理员验收闭环；RETURN_PENDING/RETURN_REJECTED 为预留枚举，暂未在接口中走到）。  
 - **耗材库存事务 stock_txn**：type=IN（入库）|OUT（领用）；status=PENDING → APPROVED | REJECTED；OUT 在管理员 APPROVED 时才扣减库存。  
 - **耗材预警**：consumable.current_qty(current_stock) < safety_stock。  
 - **维修 maintenance.status**：OPEN → IN_PROGRESS → DONE；DONE 时设备可回 AVAILABLE。
@@ -71,6 +73,9 @@
   - 耗材月消耗：按 month(sum OUT.qty where status=APPROVED)。
 
 ## 5. REST 接口清单（示例路径，JSON；日期用 ISO8601）
+- **分页约定（DRF PageNumberPagination）**
+  - 对 ViewSet 的列表接口生效（例如：`/equipment/`、`/equipment-categories/`、`/consumables/`、`/stock/`、`/maintenance/`、`/users/`、`/roles/`、`/user-roles/`、`/borrow/requests/`）。
+  - 返回结构：`{count, next, previous, results}`；通过 `?page=1` 翻页。
 - **认证**  
   - POST `/api/v1/auth/token/` body{username,password} → tokens{access,refresh}  
   - POST `/api/v1/auth/token/refresh/` body{refresh} → access
@@ -92,13 +97,14 @@
   - POST `/api/v1/borrow/requests/{id}/reject/`（管理员）→ `REJECTED`，写 `borrow_approval`  
   - POST `/api/v1/borrow/requests/{id}/checkout/`（管理员）→ 事务 + 行锁；仅 `AVAILABLE` 可出库；设备→`BORROWED`；写 `equipment_status_log`；request→`OUT`  
   - POST `/api/v1/borrow/requests/{id}/return/`（管理员）→ 写 `return_record`；设备→`AVAILABLE`；写 `equipment_status_log`；request→`CLOSED`  
-  - GET `/api/v1/borrow/requests/`（管理员全量；普通用户仅自己）/ GET `/api/v1/borrow/requests/{id}/`
+  - GET `/api/v1/borrow/requests/`（管理员全量；老师全量只读；学生仅自己）/ GET `/api/v1/borrow/requests/{id}/`
 - **耗材库存**  
   - 耗材：`/api/v1/consumables/`（CRUD；非管理员只读）  
   - 预警：GET `/api/v1/consumables/warnings/`  
   - 入库：POST `/api/v1/stock/in/`（管理员；直接 APPROVED；增加库存）  
   - 领用申请：POST `/api/v1/stock/out/`（学生/老师；OUT + PENDING；不扣库存）  
   - 审核：POST `/api/v1/stock/{id}/approve/` / POST `/api/v1/stock/{id}/reject/`（管理员；approve 防负库存）  
+  - 流水查询：GET `/api/v1/stock/`（管理员全量；其余仅本人；分页）/ GET `/api/v1/stock/{id}/`  
 - **维修**  
   - 维修单：`/api/v1/maintenance/`（列表/创建/更新；写入需要管理员或 MAINTAINER 角色）  
 - **报表**  
@@ -164,9 +170,9 @@ GET /api/v1/me/
 ## 6. 前端页面清单与路由（Vue3 + Vite + ElementPlus + Pinia）
 - `/login` 登录页  
 - `/dashboard` 仪表盘（预警、今日审批、统计卡片）  
-- `/equipment` 设备台账列表；`/equipment/:id` 详情+状态日志+维修记录  
-- `/borrow/requests` 借用申请列表（含耗材）；`/borrow/new` 创建；`/borrow/:id` 详情+审批+出库+归还验收  
-- `/consumables` 耗材与库存；`/consumables/:id` 流水；`/consumables/stock-in` 入库  
+- `/equipment` 设备台账列表；`/equipment/:id` 详情+状态日志+维修记录；`/equipment/categories` 分类管理（管理员）  
+- `/borrow/requests` 借用申请列表；`/borrow/new` 创建；`/borrow/:id` 详情+审批+出库+归还验收  
+- `/consumables` 耗材与库存（同页内包含：耗材 CRUD/预警/入库/领用申请/流水/审批等 Tab）  
 - `/maintenance` 维修单列表/编辑  
 - `/reports/borrow-top`，`/reports/utilization`，`/reports/consumption`  
 - `/admin/users` 用户管理；`/admin/roles` 角色管理  

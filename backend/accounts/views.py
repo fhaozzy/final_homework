@@ -3,11 +3,13 @@ from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from accounts.models import Role, UserRole
-from accounts.permissions import IsAdminUser
+from accounts.permissions import IsAdminUser, is_admin_user
 from accounts.serializers import (
     RoleSerializer,
     UserRoleSerializer,
@@ -17,6 +19,37 @@ from accounts.serializers import (
 )
 
 User = get_user_model()
+
+
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        role_codes = list(
+            UserRole.objects.filter(user=user)
+            .select_related("role")
+            .values_list("role__code", flat=True)
+        )
+
+        if is_admin_user(user) and "ADMIN" not in role_codes:
+            role_codes.append("ADMIN")
+
+        if not role_codes and not is_admin_user(user):
+            role_codes = ["STUDENT"]
+
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "real_name": getattr(user, "real_name", ""),
+                "email": user.email or "",
+                "phone": getattr(user, "phone", ""),
+                "roles": role_codes,
+                "is_admin": is_admin_user(user),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserViewSet(ModelViewSet):
@@ -67,4 +100,3 @@ class UserRoleViewSet(ModelViewSet):
         except IntegrityError as exc:
             raise ValidationError({"detail": "User already has this role."}) from exc
         return Response(UserRoleSerializer(instance).data, status=status.HTTP_201_CREATED)
-

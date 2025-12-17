@@ -36,12 +36,6 @@
 ## 数据库准备
 - 已创建本地数据库：`lab_manage`（utf8mb4）。如需重建：`mysql -u root -e "CREATE DATABASE IF NOT EXISTS lab_manage DEFAULT CHARACTER SET utf8mb4;"`
 
-## 后端启动与验收（backend/）
-1. 迁移：`python manage.py migrate`
-2. 创建管理员：`python manage.py createsuperuser`
-3. 启动：`python manage.py runserver 0.0.0.0:8000`
-4. 健康检查：`GET http://127.0.0.1:8000/api/v1/health/` → `{"status":"ok"}`
-
 ## 前后端联调验收（按演示脚本走）
 > 目标：从登录开始，串起设备台账、借用流程、耗材库存、维修、报表、管理后台。
 
