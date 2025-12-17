@@ -39,8 +39,39 @@
 ## 后端启动与验收（backend/）
 1. 迁移：`python manage.py migrate`
 2. 创建管理员：`python manage.py createsuperuser`
-3. 启动：`python manage.py runserver 0.0.0.0:8000`
+3. 启动：`python manage.py runserver 0.0.0.0:8000`（注意格式必须为 `地址:端口`，不要把“行号标注”写进命令）
 4. 健康检查：`GET http://127.0.0.1:8000/api/v1/health/` → `{"status":"ok"}`
+
+## 前后端联调验收（按演示脚本走）
+> 目标：从登录开始，串起设备台账、借用流程、耗材库存、维修、报表、管理后台。
+
+### 1) 准备
+1. 确保 MySQL 已启动，且存在库 `lab_manage`（或 `backend/.env` 中 `MYSQL_DATABASE` 指定的库）。
+2. 配置后端环境变量：复制 `backend/.env.example` 为 `backend/.env`，并填写 `DJANGO_SECRET_KEY` 与 `MYSQL_*`。
+3. 配置前端环境变量：复制 `frontend/.env.example` 为 `frontend/.env`（一般保持 `VITE_API_BASE_URL=/api/v1`）。
+
+### 2) 启动后端（PowerShell 窗口 1）
+1. `cd d:\dasanshang\database\final_homework`
+2. `.\.venv\Scripts\Activate.ps1`
+3. `cd backend`
+4. `pip install -r requirements.txt`
+5. `python manage.py migrate`
+6. `python manage.py createsuperuser`
+7. `python manage.py runserver 0.0.0.0:8000`
+8. 验证：访问 `http://127.0.0.1:8000/api/v1/health/` 返回 `{"status":"ok"}`
+
+### 3) 启动前端（PowerShell 窗口 2）
+1. `cd d:\dasanshang\database\final_homework\frontend`
+2. `npm i`
+3. `npm run dev`
+4. 打开 `http://127.0.0.1:5173/`
+
+### 4) 全流程验收（前端 UI）
+按 `frontend/README.md` 的「演示脚本（前端全流程）」从 0 → 6 逐步操作即可，关键验收点：
+- 学生：只看自己的借用单；访问报表路由会被拦截并提示“无权限”；库存流水仅本人。
+- 老师：可看全量借用单但无法操作审批/出库/归还；可访问 3 个报表页。
+- 管理员：可跑通借用全流程；耗材库存不足时 approve 提示失败；可维护用户/角色。
+- 维修员：可创建维修单并推进 `OPEN→IN_PROGRESS→DONE`；DONE 后设备回 `AVAILABLE` 且状态日志更新。
 
 ## 备注
 - `.env` 已加入 `.gitignore`；请使用 `backend/.env.example` 作为模板。
