@@ -10,6 +10,7 @@ import {
   fetchBorrowRequest,
   rejectBorrowRequest,
   returnBorrowRequest,
+  submitReturnRequest,
   type BorrowRequest,
   type ReturnCondition,
 } from '../api/borrowing'
@@ -39,6 +40,24 @@ async function fetchDetail() {
 }
 
 const canOperate = computed(() => auth.isAdmin)
+
+// 学生是否可以提交归还申请
+const canSubmitReturn = computed(() => {
+  if (!detail.value) return false
+  // 只有申请人可以提交归还申请
+  if (detail.value.applicant !== auth.user?.id) return false
+  // 只有状态为 OUT 时才能提交归还申请
+  return detail.value.status === 'OUT'
+})
+
+// 管理员是否可以验收归还
+const canAcceptReturn = computed(() => {
+  if (!detail.value) return false
+  if (!auth.isAdmin) return false
+  // 只有状态为 OUT 且有 RETURN_PENDING 的项时才能验收
+  if (detail.value.status !== 'OUT') return false
+  return detail.value.items?.some((it) => it.status === 'RETURN_PENDING')
+})
 
 const commentDialogVisible = ref(false)
 const commentMode = ref<'approve' | 'reject'>('approve')
@@ -105,6 +124,24 @@ async function onCheckout() {
   }
 }
 
+async function onSubmitReturn() {
+  if (!detail.value) return
+  try {
+    await ElMessageBox.confirm('确认提交归还申请？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+
+  try {
+    await submitReturnRequest(detail.value.id)
+    ElMessage.success('已提交归还申请，等待管理员验收')
+    await fetchDetail()
+  } catch (err: any) {
+    const msg = err?.response?.data?.detail || err?.response?.data?.status || '提交失败'
+    ElMessage.error(Array.isArray(msg) ? msg.join('; ') : String(msg))
+  }
+}
+
 const returnDialogVisible = ref(false)
 const returnSaving = ref(false)
 type ReturnItemForm = {
@@ -126,7 +163,7 @@ const conditionOptions: Array<{ value: ReturnCondition; label: string }> = [
 function openReturnDialog() {
   if (!detail.value) return
   returnItems.value = (detail.value.items || [])
-    .filter((it) => it.item_type === 'EQUIPMENT' && it.equipment)
+    .filter((it) => it.item_type === 'EQUIPMENT' && it.equipment && it.status === 'RETURN_PENDING')
     .map((it) => ({
       borrow_item_id: it.id,
       equipment_code: it.equipment?.code || '-',
@@ -238,7 +275,14 @@ onMounted(() => {
           出库
         </el-button>
         <el-button
-          v-if="detail.status === 'OUT'"
+          v-if="canSubmitReturn"
+          type="primary"
+          @click="onSubmitReturn"
+        >
+          提交归还申请
+        </el-button>
+        <el-button
+          v-if="canAcceptReturn"
           type="primary"
           :disabled="!canOperate"
           @click="openReturnDialog"

@@ -153,3 +153,11 @@ class BorrowReturnItemSerializer(serializers.Serializer):
 
 class BorrowReturnSerializer(serializers.Serializer):
     items = BorrowReturnItemSerializer(many=True, required=False)
+
+
+class BorrowSubmitReturnItemSerializer(serializers.Serializer):
+    borrow_item_id = serializers.IntegerField()
+
+
+class BorrowSubmitReturnSerializer(serializers.Serializer):
+    items = BorrowSubmitReturnItemSerializer(many=True, required=False)

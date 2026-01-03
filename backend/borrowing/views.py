@@ -24,6 +24,7 @@ from borrowing.serializers import (
     BorrowRequestCreateSerializer,
     BorrowRequestSerializer,
     BorrowReturnSerializer,
+    BorrowSubmitReturnSerializer,
 )
 from inventory.models import Equipment, EquipmentStatus, EquipmentStatusLog
 
@@ -52,6 +53,8 @@ class BorrowRequestViewSet(
             return BorrowApprovalActionSerializer
         if self.action == "reject":
             return BorrowApprovalActionSerializer
+        if self.action == "submit_return":
+            return BorrowSubmitReturnSerializer
         if self.action == "return_request":
             return BorrowReturnSerializer
         return BorrowRequestSerializer
@@ -209,9 +212,10 @@ class BorrowRequestViewSet(
         )
         return Response(BorrowRequestSerializer(borrow_request).data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["post"], url_path="return")
+    @action(detail=True, methods=["post"], url_path="submit-return")
     @transaction.atomic
-    def return_request(self, request, pk=None):
+    def submit_return(self, request, pk=None):
+        """学生提交归还申请"""
         borrow_request = (
             BorrowRequest.objects.select_for_update()
             .prefetch_related("items")
@@ -223,22 +227,77 @@ class BorrowRequestViewSet(
         if borrow_request.status != RequestStatus.OUT:
             raise ValidationError({"status": f"Request must be OUT, got {borrow_request.status}."})
 
+        if borrow_request.applicant != request.user:
+            raise ValidationError({"applicant": "Only the applicant can submit return request."})
+
         items = list(borrow_request.items.all())
         if not items:
             raise ValidationError({"items": "Request has no items."})
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return_items = serializer.validated_data.get("items")
+        submit_items = serializer.validated_data.get("items")
 
         item_by_id = {it.id: it for it in items}
+        if submit_items:
+            item_ids = [it["borrow_item_id"] for it in submit_items]
+            unknown = [bid for bid in item_ids if bid not in item_by_id]
+            if unknown:
+                raise ValidationError({"items": f"borrow_item_id not in this request: {unknown}"})
+            items_to_submit = [item_by_id[bid] for bid in item_ids]
+        else:
+            items_to_submit = items
+
+        now = timezone.now()
+        BorrowItem.objects.filter(id__in=[it.id for it in items_to_submit]).update(
+            status=BorrowItemStatus.RETURN_PENDING,
+            return_submitted_at=now,
+            updated_at=now,
+        )
+
+        borrow_request = (
+            BorrowRequest.objects.select_related("applicant", "approver")
+            .prefetch_related("items__equipment", "approval")
+            .get(pk=borrow_request.pk)
+        )
+        return Response(BorrowRequestSerializer(borrow_request).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="return")
+    @transaction.atomic
+    def return_request(self, request, pk=None):
+        """管理员验收归还申请"""
+        borrow_request = (
+            BorrowRequest.objects.select_for_update()
+            .prefetch_related("items")
+            .get(pk=pk)
+        )
+        if borrow_request.type != RequestType.EQUIPMENT:
+            raise ValidationError({"type": "Only EQUIPMENT requests are supported by this endpoint."})
+
+        items = list(borrow_request.items.all())
+        if not items:
+            raise ValidationError({"items": "Request has no items."})
+
+        # 只处理状态为 RETURN_PENDING 的借用项
+        pending_items = [it for it in items if it.status == BorrowItemStatus.RETURN_PENDING]
+        if not pending_items:
+            raise ValidationError({"items": "No items with RETURN_PENDING status to accept."})
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return_items = serializer.validated_data.get("items")
+
+        item_by_id = {it.id: it for it in pending_items}
         if return_items:
             item_ids = [it["borrow_item_id"] for it in return_items]
             unknown = [bid for bid in item_ids if bid not in item_by_id]
             if unknown:
-                raise ValidationError({"items": f"borrow_item_id not in this request: {unknown}"})
+                raise ValidationError({"items": f"borrow_item_id not in pending items: {unknown}"})
+            items_to_accept = [item_by_id[bid] for bid in item_ids]
+        else:
+            items_to_accept = pending_items
 
-        equipment_ids = sorted({it.equipment_id for it in items if it.equipment_id is not None})
+        equipment_ids = sorted({it.equipment_id for it in items_to_accept if it.equipment_id is not None})
         equipments = list(Equipment.objects.select_for_update().filter(id__in=equipment_ids).order_by("id"))
         if len(equipments) != len(equipment_ids):
             raise ValidationError({"items": "Some equipment not found."})
@@ -253,7 +312,7 @@ class BorrowRequestViewSet(
         if existing_return_records:
             raise ValidationError({"return_record": f"Already returned: {sorted(existing_return_records)}"})
 
-        defaults = {it.id: {"condition": ReturnCondition.GOOD, "fee": 0, "remark": ""} for it in items}
+        defaults = {it.id: {"condition": ReturnCondition.GOOD, "fee": 0, "remark": ""} for it in items_to_accept}
         if return_items:
             for ri in return_items:
                 defaults[ri["borrow_item_id"]] = {
@@ -279,7 +338,7 @@ class BorrowRequestViewSet(
 
         EquipmentStatusLog.objects.bulk_create(logs)
 
-        for item in items:
+        for item in items_to_accept:
             meta = defaults[item.id]
             return_records.append(
                 ReturnRecord(
@@ -294,14 +353,19 @@ class BorrowRequestViewSet(
 
         ReturnRecord.objects.bulk_create(return_records)
 
-        BorrowItem.objects.filter(id__in=item_by_id.keys()).update(
+        BorrowItem.objects.filter(id__in=[it.id for it in items_to_accept]).update(
             status=BorrowItemStatus.RETURN_ACCEPTED,
             return_checked_at=now,
             updated_at=now,
         )
 
-        borrow_request.status = RequestStatus.CLOSED
-        borrow_request.save(update_fields=["status", "updated_at"])
+        # 检查是否所有项都已归还，如果是则关闭借用请求
+        remaining_items = BorrowItem.objects.filter(request=borrow_request).exclude(
+            status=BorrowItemStatus.RETURN_ACCEPTED
+        ).count()
+        if remaining_items == 0:
+            borrow_request.status = RequestStatus.CLOSED
+            borrow_request.save(update_fields=["status", "updated_at"])
 
         borrow_request = (
             BorrowRequest.objects.select_related("applicant", "approver")

@@ -88,6 +88,15 @@ export function checkoutBorrowRequest(id: number): Promise<BorrowRequest> {
 
 export type ReturnCondition = 'GOOD' | 'DAMAGED' | 'LOST'
 
+export function submitReturnRequest(
+  id: number,
+  payload: {
+    items?: Array<{ borrow_item_id: number }>
+  } = {},
+): Promise<BorrowRequest> {
+  return http.post<BorrowRequest>(`/borrow/requests/${id}/submit-return/`, payload).then((r) => r.data)
+}
+
 export function returnBorrowRequest(
   id: number,
   payload: {
