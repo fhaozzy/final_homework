@@ -36,6 +36,48 @@
 ## 数据库准备
 - 已创建本地数据库：`lab_manage`（utf8mb4）。如需重建：`mysql -u root -e "CREATE DATABASE IF NOT EXISTS lab_manage DEFAULT CHARACTER SET utf8mb4;"`
 
+## 关键代码索引（相对路径）
+### 后端（Django/DRF）
+- `backend/accounts/models.py`：用户与角色等基础数据模型（表结构）。
+- `backend/borrowing/models.py`：借用流程相关模型（借用单/借用行/归还记录）。
+- `backend/inventory/models.py`：设备、耗材与库存流水模型。
+- `backend/maintenance/models.py`：维修单模型与状态字段。
+- `backend/accounts/serializers.py`：用户与角色序列化/校验。
+- `backend/borrowing/serializers.py`：借用流程序列化/校验。
+- `backend/inventory/serializers.py`：设备/耗材序列化/校验。
+- `backend/maintenance/serializers.py`：维修单序列化/校验。
+- `backend/accounts/permissions.py`：角色权限与访问控制。
+- `backend/accounts/views.py`：用户/角色接口与权限校验。
+- `backend/borrowing/views.py`：借用审批/出库/归还等核心业务接口。
+- `backend/inventory/views.py`：设备/耗材/库存接口与业务规则。
+- `backend/maintenance/views.py`：维修接口与状态流转。
+- `backend/project/settings.py`：全局配置（应用、DRF、数据库等）。
+- `backend/project/urls.py`：后端路由入口与 API 前缀。
+- `docs/SPEC.md`：业务规则与 API 规范总览。
+
+### 前端（Vue3）
+- `frontend/src/main.ts`：应用入口，挂载 Vue/路由/状态。
+- `frontend/src/App.vue`：根组件与整体布局容器。
+- `frontend/src/router/index.ts`：路由定义与权限守卫。
+- `frontend/src/stores/auth.ts`：登录态、token 管理与用户信息。
+- `frontend/src/api/http.ts`：Axios 实例与基础配置。
+- `frontend/src/api/interceptors.ts`：请求/响应拦截（鉴权、错误处理）。
+- `frontend/src/api/*.ts`：按业务划分的 API 调用封装。
+- `frontend/src/views/LoginView.vue`：登录页与获取 token。
+- `frontend/src/views/DashboardView.vue`：仪表盘入口页。
+- `frontend/src/views/EquipmentListView.vue`：设备台账列表。
+- `frontend/src/views/BorrowRequestsView.vue`：借用单列表。
+- `frontend/src/views/ConsumablesView.vue`：耗材与库存页面。
+- `frontend/src/views/MaintenanceView.vue`：维修单页面。
+- `frontend/src/views/admin/AdminUsersView.vue`：用户管理页面。
+- `frontend/src/views/reports/BorrowTopReportView.vue`：借用排行报表页。
+
+## 学习建议（从快到慢）
+1. 先读 `docs/SPEC.md`，搞清楚角色、状态机、接口与表结构。
+2. 后端先看 `backend/*/models.py` 把表和字段过一遍，再看对应 `serializers.py` 与 `views.py` 了解校验和流程。
+3. 前端从 `frontend/src/main.ts` → `frontend/src/router/index.ts` → 具体 `views/*.vue`，再回头看 `api/*.ts` 对应调用。
+4. 运行项目，跟着页面操作，按浏览器 Network 追踪接口与返回数据。
+
 ## 前后端联调验收（按演示脚本走）
 > 目标：从登录开始，串起设备台账、借用流程、耗材库存、维修、报表、管理后台。
 
