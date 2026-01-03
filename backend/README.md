@@ -22,7 +22,7 @@
 ## 常用命令
 - 生成迁移：`python manage.py makemigrations`
 - 执行迁移：`python manage.py migrate`
-- 创建超级管理员：`python manage.py createsuperuser`
+- 创建超级管理员：`python manage.py createsuperuser`（自动分配ADMIN角色）
 - 本地运行：`python manage.py runserver 0.0.0.0:8000`
 
 ## 健康检查
