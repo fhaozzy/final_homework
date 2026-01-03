@@ -52,6 +52,20 @@ const permissionHint = computed(() => {
   return '未知'
 })
 
+const displayName = computed(() => auth.user?.real_name || auth.user?.username || '未知用户')
+const displayUsername = computed(() => auth.user?.username || '-')
+const displayEmail = computed(() => auth.user?.email || '-')
+const displayPhone = computed(() => auth.user?.phone || '-')
+const displayRoles = computed(() => {
+  if (auth.user?.roles?.length) return auth.user.roles
+  if (auth.inferredRole && auth.inferredRole !== 'UNKNOWN') return [auth.inferredRole]
+  return []
+})
+const userInitial = computed(() => {
+  const name = displayName.value.trim()
+  return name ? name.slice(0, 1).toUpperCase() : '?'
+})
+
 async function onRefreshToken() {
   try {
     await auth.refresh()
@@ -125,6 +139,35 @@ onMounted(() => {
             <el-tag type="info">{{ auth.inferredRole }}</el-tag>
           </el-tooltip>
 
+          <el-popover placement="bottom" width="240" trigger="hover">
+            <template #reference>
+              <div class="user-chip">
+                <el-avatar size="small">{{ userInitial }}</el-avatar>
+                <span class="user-name">{{ displayName }}</span>
+              </div>
+            </template>
+            <div class="user-info">
+              <div class="user-info-row">
+                <span class="label">用户名</span>
+                <span class="value">{{ displayUsername }}</span>
+              </div>
+              <div class="user-info-row">
+                <span class="label">邮箱</span>
+                <span class="value">{{ displayEmail }}</span>
+              </div>
+              <div class="user-info-row">
+                <span class="label">手机</span>
+                <span class="value">{{ displayPhone }}</span>
+              </div>
+              <div v-if="displayRoles.length" class="user-info-row">
+                <span class="label">角色</span>
+                <span class="value roles">
+                  <el-tag v-for="role in displayRoles" :key="role" size="small">{{ role }}</el-tag>
+                </span>
+              </div>
+            </div>
+          </el-popover>
+
           <el-button text @click="onRefreshToken">刷新 Token</el-button>
           <el-button text @click="onLogout">退出</el-button>
         </div>
@@ -184,6 +227,52 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 16px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.user-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.user-info-row .label {
+  color: var(--el-text-color-secondary);
+}
+
+.user-info-row .value {
+  text-align: right;
+}
+
+.user-info-row .roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
 .main {
